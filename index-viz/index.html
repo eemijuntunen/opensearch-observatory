@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inverted Index Visualizer</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;height:100vh;display:flex;flex-direction:column;background:#0a0a12;color:#e0f0ff}
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:#0d1a2a;border-bottom:1px solid #1a2a44}
+header h1{font-size:15px;letter-spacing:1px}
+header h1 span{color:#00b4d8}
+.presets{display:flex;gap:6px}
+.preset-btn{background:#0a1628;color:#5a8aaa;border:1px solid #1a2a44;padding:4px 10px;border-radius:10px;font-size:10px;cursor:pointer;font-family:inherit}
+.preset-btn:hover,.preset-btn.active{color:#00b4d8;border-color:#00b4d8}
+.main{display:flex;flex:1;overflow:hidden}
+.panel{display:flex;flex-direction:column;overflow:hidden}
+.panel-left{width:280px;border-right:1px solid #1a2a44}
+.panel-center{flex:1;border-right:1px solid #1a2a44}
+.panel-right{width:300px}
+.panel-header{padding:8px 14px;background:#0d1a2a;border-bottom:1px solid #1a2a44;font-size:10px;color:#4a6a8a;font-weight:600;letter-spacing:1px;display:flex;justify-content:space-between;align-items:center}
+.panel-body{flex:1;overflow:auto;padding:12px}
+
+/* Documents panel */
+.doc-card{background:#0a1628;border:1px solid #1a2a44;border-radius:8px;padding:10px;margin-bottom:8px;font-size:11px;position:relative;transition:border-color 0.3s}
+.doc-card.highlight{border-color:#00e5a0}
+.doc-id{color:#4a6a8a;font-size:9px;margin-bottom:4px;font-weight:700;letter-spacing:1px}
+.doc-field{display:flex;gap:6px;margin:2px 0}
+.doc-field .fname{color:#00b4d8;min-width:70px}
+.doc-field .fval{color:#a0b8d0}
+.add-doc{width:100%;padding:8px;background:#0d1a2a;border:1px dashed #1a2a44;border-radius:8px;color:#4a6a8a;font-size:11px;cursor:pointer;font-family:inherit;margin-top:4px}
+.add-doc:hover{border-color:#00b4d8;color:#00b4d8}
+
+/* Index panel */
+.field-section{margin-bottom:16px}
+.field-title{font-size:10px;color:#4a6a8a;font-weight:700;letter-spacing:1px;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.field-type{font-size:8px;padding:2px 6px;border-radius:8px;font-weight:600}
+.type-text{background:#00b4d822;color:#00b4d8}
+.type-keyword{background:#8338ec22;color:#8338ec}
+.type-number{background:#ffbe0b22;color:#ffbe0b}
+.type-date{background:#ff006e22;color:#ff006e}
+.index-row{display:flex;align-items:center;gap:8px;padding:4px 8px;margin:2px 0;border-radius:4px;font-size:11px;transition:background 0.3s}
+.index-row.highlight{background:#00e5a015}
+.index-term{color:#00e5a0;min-width:100px;font-weight:600}
+.index-arrow{color:#1a2a44}
+.index-docs{display:flex;gap:4px;flex-wrap:wrap}
+.index-doc{padding:1px 6px;border-radius:4px;font-size:9px;font-weight:600;background:#0a1628;color:#5a7a9a;border:1px solid #1a2a44;transition:all 0.3s}
+.index-doc.highlight{background:#00e5a020;color:#00e5a0;border-color:#00e5a044}
+.explain-text{font-size:10px;color:#3a5a7a;font-style:italic;padding:4px 8px;margin-bottom:8px;border-left:2px solid #1a2a44;line-height:1.5}
+
+/* Search panel */
+.search-input{width:100%;background:#04080f;border:1px solid #1a2a44;border-radius:6px;padding:8px 10px;color:#e0f0ff;font-family:'SF Mono',monospace;font-size:12px;outline:none;margin-bottom:8px;resize:vertical;min-height:80px}
+.search-input:focus{border-color:#00b4d8}
+.search-btn{width:100%;padding:8px;background:#00b4d8;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px}
+.search-btn:hover{background:#0096b7}
+.search-type{display:flex;gap:6px;margin-bottom:8px}
+.stype-btn{flex:1;padding:6px;background:#0a1628;border:1px solid #1a2a44;border-radius:6px;color:#5a8aaa;font-size:10px;cursor:pointer;text-align:center;font-family:inherit}
+.stype-btn:hover,.stype-btn.active{color:#00b4d8;border-color:#00b4d8}
+.result-box{background:#04080f;border:1px solid #1a2a44;border-radius:8px;padding:10px;font-size:11px;line-height:1.6}
+.result-title{font-size:10px;color:#4a6a8a;font-weight:700;letter-spacing:1px;margin-bottom:6px}
+.step{padding:6px 8px;margin:4px 0;border-left:3px solid #1a2a44;border-radius:0 4px 4px 0;background:#0a1020;font-size:11px;color:#a0b8d0;line-height:1.5}
+.step.lookup{border-left-color:#00b4d8}
+.step.match{border-left-color:#00e5a0}
+.step.score{border-left-color:#ffbe0b}
+.step code{color:#00e5a0;background:#0d1a2a;padding:1px 4px;border-radius:3px;font-size:10px}
+.matched-docs{margin-top:8px}
+.matched-doc{background:#0a1628;border:1px solid #1a2a44;border-radius:6px;padding:8px;margin:4px 0;font-size:10px}
+.matched-doc .score{color:#ffbe0b;font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <h1>📇 <span>Inverted Index</span> Visualizer</h1>
+  <div class="presets">
+    <button class="preset-btn active" data-preset="movies">Movies</button>
+    <button class="preset-btn" data-preset="logs">Logs</button>
+    <button class="preset-btn" data-preset="ecommerce">Products</button>
+    <button class="preset-btn" data-preset="custom">Custom</button>
+  </div>
+</header>
+<div class="main">
+  <div class="panel panel-left">
+    <div class="panel-header">DOCUMENTS</div>
+    <div class="panel-body" id="docsPanel"></div>
+  </div>
+  <div class="panel panel-center">
+    <div class="panel-header">INVERTED INDEX <span id="indexStats"></span></div>
+    <div class="panel-body" id="indexPanel"></div>
+  </div>
+  <div class="panel panel-right">
+    <div class="panel-header">SEARCH</div>
+    <div class="panel-body" id="searchPanel">
+      <div class="search-type">
+        <button class="stype-btn active" data-type="match">match</button>
+        <button class="stype-btn" data-type="term">term</button>
+        <button class="stype-btn" data-type="range">range</button>
+      </div>
+      <div id="searchFields"></div>
+      <textarea class="search-input" id="searchInput" placeholder="Type a search query..." spellcheck="false"></textarea>
+      <button class="search-btn" id="searchBtn">Search</button>
+      <div class="result-title" style="margin-bottom:6px">TRY THESE</div>
+      <div id="examples" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px"></div>
+      <div id="searchResults"></div>
+    </div>
+  </div>
+</div>
+<script>
+// ── SCHEMA & DATA ──
+const PRESETS = {
+  movies: {
+    schema: {
+      title: { type: 'text', analyze: true },
+      genre: { type: 'keyword' },
+      year: { type: 'integer' },
+      rating: { type: 'float' }
+    },
+    docs: [
+      { title: 'The Dark Knight', genre: 'Action', year: 2008, rating: 4.9 },
+      { title: 'The Dark Tower', genre: 'Sci-Fi', year: 2017, rating: 3.2 },
+      { title: 'Dark Waters', genre: 'Drama', year: 2019, rating: 4.1 },
+      { title: 'A Knight\'s Tale', genre: 'Action', year: 2001, rating: 3.8 },
+      { title: 'Interstellar', genre: 'Sci-Fi', year: 2014, rating: 4.8 },
+    ]
+  },
+  logs: {
+    schema: {
+      level: { type: 'keyword' },
+      message: { type: 'text', analyze: true },
+      status: { type: 'integer' },
+      service: { type: 'keyword' }
+    },
+    docs: [
+      { level: 'ERROR', message: 'Connection timeout to database', status: 500, service: 'api-gateway' },
+      { level: 'INFO', message: 'Connection established successfully', status: 200, service: 'auth-service' },
+      { level: 'ERROR', message: 'Database connection pool exhausted', status: 503, service: 'api-gateway' },
+      { level: 'WARN', message: 'Slow query detected in search engine', status: 200, service: 'search-engine' },
+      { level: 'INFO', message: 'Search index refresh completed', status: 200, service: 'search-engine' },
+    ]
+  },
+  ecommerce: {
+    schema: {
+      name: { type: 'text', analyze: true },
+      category: { type: 'keyword' },
+      price: { type: 'float' },
+      in_stock: { type: 'keyword' }
+    },
+    docs: [
+      { name: 'Wireless Bluetooth Headphones', category: 'Audio', price: 49.99, in_stock: 'true' },
+      { name: 'Mechanical Gaming Keyboard', category: 'Peripherals', price: 89.99, in_stock: 'true' },
+      { name: 'Wireless Gaming Mouse', category: 'Peripherals', price: 39.99, in_stock: 'false' },
+      { name: 'USB-C Charging Cable', category: 'Accessories', price: 12.99, in_stock: 'true' },
+      { name: 'Bluetooth Speaker Portable', category: 'Audio', price: 29.99, in_stock: 'true' },
+    ]
+  },
+  custom: {
+    schema: {
+      title: { type: 'text', analyze: true },
+      tag: { type: 'keyword' },
+      score: { type: 'integer' }
+    },
+    docs: [
+      { title: 'Hello world example', tag: 'demo', score: 10 },
+      { title: 'World of search engines', tag: 'search', score: 25 },
+    ]
+  }
+};
+
+let currentPreset = 'movies';
+let schema = {};
+let docs = [];
+let invertedIndex = {};  // field -> { term -> [docIds] }
+let numericIndex = {};   // field -> sorted [{val, docId}]
+let searchType = 'match';
+
+// ── INDEXING ENGINE ──
+function tokenize(text) {
+  return String(text).toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+}
+
+function buildIndex() {
+  invertedIndex = {};
+  numericIndex = {};
+  for (const [field, conf] of Object.entries(schema)) {
+    if (conf.type === 'text') {
+      invertedIndex[field] = {};
+    } else if (conf.type === 'keyword') {
+      invertedIndex[field] = {};
+    } else {
+      numericIndex[field] = [];
+    }
+  }
+  docs.forEach((doc, i) => {
+    const id = i;
+    for (const [field, conf] of Object.entries(schema)) {
+      const val = doc[field];
+      if (val === undefined) continue;
+      if (conf.type === 'text') {
+        const tokens = tokenize(val);
+        tokens.forEach(tok => {
+          if (!invertedIndex[field][tok]) invertedIndex[field][tok] = [];
+          if (!invertedIndex[field][tok].includes(id)) invertedIndex[field][tok].push(id);
+        });
+      } else if (conf.type === 'keyword') {
+        const key = String(val);
+        if (!invertedIndex[field][key]) invertedIndex[field][key] = [];
+        if (!invertedIndex[field][key].includes(id)) invertedIndex[field][key].push(id);
+      } else {
+        numericIndex[field].push({ val: Number(val), docId: id });
+      }
+    }
+  });
+  // Sort numeric
+  for (const f in numericIndex) numericIndex[f].sort((a, b) => a.val - b.val);
+}
+
+// ── RENDER DOCUMENTS ──
+function renderDocs(highlightIds) {
+  const hl = new Set(highlightIds || []);
+  const panel = document.getElementById('docsPanel');
+  panel.innerHTML = docs.map((d, i) => {
+    const cls = hl.has(i) ? ' highlight' : '';
+    const fields = Object.entries(schema).map(([f]) =>
+      `<div class="doc-field"><span class="fname">${f}:</span><span class="fval">${d[f] !== undefined ? d[f] : '—'}</span></div>`
+    ).join('');
+    return `<div class="doc-card${cls}"><div class="doc-id">DOC ${i}</div>${fields}</div>`;
+  }).join('');
+}
+
+// ── RENDER INDEX ──
+function renderIndex(highlightTerms, highlightDocs) {
+  const htMap = highlightTerms || {};  // field -> Set of terms
+  const hdSet = new Set(highlightDocs || []);
+  const panel = document.getElementById('indexPanel');
+  let html = '';
+  let totalTerms = 0;
+
+  for (const [field, conf] of Object.entries(schema)) {
+    const typeCls = { text: 'type-text', keyword: 'type-keyword', integer: 'type-number', float: 'type-number' }[conf.type] || '';
+    const explain = {
+      text: 'Analyzed: text is lowercased and split into tokens. Use <code>match</code> queries.',
+      keyword: 'Not analyzed: stored as exact values. Use <code>term</code> queries.',
+      integer: 'Numeric: stored in a sorted structure for fast range queries.',
+      float: 'Numeric: stored in a sorted structure for fast range queries.'
+    }[conf.type];
+
+    html += `<div class="field-section">`;
+    html += `<div class="field-title">${field} <span class="field-type ${typeCls}">${conf.type}</span></div>`;
+    html += `<div class="explain-text">${explain}</div>`;
+
+    if (invertedIndex[field]) {
+      const entries = Object.entries(invertedIndex[field]).sort((a, b) => a[0].localeCompare(b[0]));
+      totalTerms += entries.length;
+      for (const [term, docIds] of entries) {
+        const termHl = htMap[field]?.has(term) ? ' highlight' : '';
+        const docBadges = docIds.map(id => {
+          const dhl = hdSet.has(id) && termHl ? ' highlight' : '';
+          return `<span class="index-doc${dhl}">Doc ${id}</span>`;
+        }).join('');
+        html += `<div class="index-row${termHl}"><span class="index-term">${term}</span><span class="index-arrow">→</span><span class="index-docs">${docBadges}</span></div>`;
+      }
+    }
+    if (numericIndex[field]) {
+      totalTerms += numericIndex[field].length;
+      for (const { val, docId } of numericIndex[field]) {
+        const dhl = hdSet.has(docId) ? ' highlight' : '';
+        html += `<div class="index-row${dhl}"><span class="index-term">${val}</span><span class="index-arrow">→</span><span class="index-docs"><span class="index-doc${dhl}">Doc ${docId}</span></span></div>`;
+      }
+    }
+    html += `</div>`;
+  }
+  panel.innerHTML = html;
+  document.getElementById('indexStats').textContent = `${totalTerms} terms · ${docs.length} docs`;
+}
+
+// ── SEARCH ──
+function doSearch() {
+  const input = document.getElementById('searchInput').value.trim();
+  if (!input) return;
+  const results = document.getElementById('searchResults');
+  const steps = [];
+  const highlightTerms = {};
+  let matchedIds = [];
+
+  // Pick first text/keyword field for simple queries
+  const textFields = Object.entries(schema).filter(([, c]) => c.type === 'text').map(([f]) => f);
+  const kwFields = Object.entries(schema).filter(([, c]) => c.type === 'keyword').map(([f]) => f);
+  const numFields = Object.entries(schema).filter(([, c]) => c.type === 'integer' || c.type === 'float').map(([f]) => f);
+
+  if (searchType === 'match') {
+    const field = textFields[0] || kwFields[0];
+    if (!field) { results.innerHTML = '<div class="step">No text fields to search</div>'; return; }
+    const tokens = tokenize(input);
+    steps.push({ cls: 'lookup', text: `<strong>match</strong> on <code>${field}</code>: analyzes "${input}" → tokens: ${tokens.map(t => `<code>${t}</code>`).join(', ')}` });
+
+    highlightTerms[field] = new Set(tokens);
+    const docScores = {};
+    tokens.forEach(tok => {
+      const posting = invertedIndex[field]?.[tok] || [];
+      steps.push({ cls: posting.length ? 'match' : 'lookup', text: `Look up <code>${tok}</code> → ${posting.length ? posting.map(id => `Doc ${id}`).join(', ') : 'no matches'}` });
+      posting.forEach(id => { docScores[id] = (docScores[id] || 0) + 1; });
+    });
+    matchedIds = Object.entries(docScores).sort((a, b) => b[1] - a[1]).map(([id, score]) => ({ id: +id, score }));
+    if (matchedIds.length) {
+      steps.push({ cls: 'score', text: `Scoring: documents matching more tokens rank higher` });
+    }
+
+  } else if (searchType === 'term') {
+    const field = kwFields[0] || textFields[0];
+    if (!field) { results.innerHTML = '<div class="step">No keyword fields to search</div>'; return; }
+    const exact = schema[field].type === 'keyword' ? input : input.toLowerCase();
+    steps.push({ cls: 'lookup', text: `<strong>term</strong> on <code>${field}</code>: exact lookup for "${exact}" (no analysis)` });
+    highlightTerms[field] = new Set([exact]);
+    const posting = invertedIndex[field]?.[exact] || [];
+    steps.push({ cls: posting.length ? 'match' : 'lookup', text: `Look up <code>${exact}</code> → ${posting.length ? posting.map(id => `Doc ${id}`).join(', ') : 'no matches'}` });
+    if (schema[field].type === 'text' && !posting.length) {
+      steps.push({ cls: 'lookup', text: `💡 <strong>Tip:</strong> This is a <code>text</code> field — values are stored as lowercase tokens. Try <code>match</code> instead of <code>term</code>.` });
+    }
+    matchedIds = posting.map(id => ({ id, score: 1 }));
+
+  } else if (searchType === 'range') {
+    const field = numFields[0];
+    if (!field) { results.innerHTML = '<div class="step">No numeric fields to search</div>'; return; }
+    const num = parseFloat(input);
+    if (isNaN(num)) { results.innerHTML = '<div class="step">Enter a number for range query (searches ≥ value)</div>'; return; }
+    steps.push({ cls: 'lookup', text: `<strong>range</strong> on <code>${field}</code>: find values ≥ ${num}` });
+    steps.push({ cls: 'lookup', text: `Scanning sorted numeric index for <code>${field}</code>...` });
+    const matches = (numericIndex[field] || []).filter(e => e.val >= num);
+    matchedIds = matches.map(e => ({ id: e.docId, score: e.val }));
+    steps.push({ cls: matches.length ? 'match' : 'lookup', text: `Found ${matches.length} values ≥ ${num}: ${matches.map(e => `${e.val} (Doc ${e.docId})`).join(', ') || 'none'}` });
+  }
+
+  // Render results
+  const allMatchedDocIds = matchedIds.map(m => m.id);
+  let html = '<div class="result-title">EXECUTION STEPS</div>';
+  html += steps.map(s => `<div class="step ${s.cls}">${s.text}</div>`).join('');
+
+  if (matchedIds.length) {
+    html += '<div class="result-title" style="margin-top:12px">MATCHED DOCUMENTS</div>';
+    html += '<div class="matched-docs">';
+    matchedIds.forEach(m => {
+      const d = docs[m.id];
+      const fields = Object.keys(schema).map(f => `<span style="color:#4a6a8a">${f}:</span> ${d[f]}`).join(' · ');
+      html += `<div class="matched-doc"><strong>Doc ${m.id}</strong> <span class="score">(score: ${m.score})</span><br>${fields}</div>`;
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="step" style="margin-top:8px">No documents matched.</div>';
+  }
+
+  results.innerHTML = html;
+  renderIndex(highlightTerms, allMatchedDocIds);
+  renderDocs(allMatchedDocIds);
+}
+
+const EXAMPLES = {
+  movies: [
+    { type: 'match', q: 'dark knight', label: 'match: dark knight' },
+    { type: 'match', q: 'dark', label: 'match: dark' },
+    { type: 'match', q: 'interstellar', label: 'match: interstellar' },
+    { type: 'term', q: 'Action', label: 'term: Action' },
+    { type: 'term', q: 'The Dark Knight', label: 'term: The Dark Knight (fails!)' },
+    { type: 'range', q: '2015', label: 'range: year ≥ 2015' },
+    { type: 'range', q: '4.5', label: 'range: rating ≥ 4.5' },
+  ],
+  logs: [
+    { type: 'match', q: 'connection database', label: 'match: connection database' },
+    { type: 'match', q: 'search', label: 'match: search' },
+    { type: 'term', q: 'ERROR', label: 'term: ERROR' },
+    { type: 'term', q: 'api-gateway', label: 'term: api-gateway' },
+    { type: 'term', q: 'connection', label: 'term: connection (fails on text!)' },
+    { type: 'range', q: '500', label: 'range: status ≥ 500' },
+  ],
+  ecommerce: [
+    { type: 'match', q: 'wireless bluetooth', label: 'match: wireless bluetooth' },
+    { type: 'match', q: 'gaming', label: 'match: gaming' },
+    { type: 'term', q: 'Audio', label: 'term: Audio' },
+    { type: 'term', q: 'true', label: 'term: in_stock true' },
+    { type: 'range', q: '40', label: 'range: price ≥ 40' },
+  ],
+  custom: [
+    { type: 'match', q: 'world', label: 'match: world' },
+    { type: 'term', q: 'search', label: 'term: search' },
+    { type: 'range', q: '15', label: 'range: score ≥ 15' },
+  ]
+};
+
+function renderExamples() {
+  const el = document.getElementById('examples');
+  const exs = EXAMPLES[currentPreset] || [];
+  el.innerHTML = exs.map(ex =>
+    `<button class="preset-btn" data-extype="${ex.type}" data-exq="${ex.q}">${ex.label}</button>`
+  ).join('');
+  el.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Set search type
+      searchType = btn.dataset.extype;
+      document.querySelectorAll('.stype-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector(`.stype-btn[data-type="${searchType}"]`).classList.add('active');
+      updateSearchHint();
+      // Set query
+      document.getElementById('searchInput').value = btn.dataset.exq;
+      doSearch();
+    });
+  });
+}
+
+// ── PRESETS ──
+function loadPreset(name) {
+  currentPreset = name;
+  const p = PRESETS[name];
+  schema = JSON.parse(JSON.stringify(p.schema));
+  docs = JSON.parse(JSON.stringify(p.docs));
+  buildIndex();
+  renderDocs();
+  renderIndex();
+  document.getElementById('searchResults').innerHTML = '';
+  document.getElementById('searchInput').value = '';
+  updateSearchHint();
+  renderExamples();
+}
+
+function updateSearchHint() {
+  const fields = document.getElementById('searchFields');
+  if (searchType === 'match') {
+    const f = Object.entries(schema).find(([, c]) => c.type === 'text');
+    fields.innerHTML = f ? `<div style="font-size:10px;color:#3a5a7a;margin-bottom:6px">Searching: <code style="color:#00b4d8">${f[0]}</code> (text field)</div>` : '';
+  } else if (searchType === 'term') {
+    const f = Object.entries(schema).find(([, c]) => c.type === 'keyword') || Object.entries(schema).find(([, c]) => c.type === 'text');
+    fields.innerHTML = f ? `<div style="font-size:10px;color:#3a5a7a;margin-bottom:6px">Searching: <code style="color:#8338ec">${f[0]}</code> (${schema[f[0]].type} field)</div>` : '';
+  } else {
+    const f = Object.entries(schema).find(([, c]) => c.type === 'integer' || c.type === 'float');
+    fields.innerHTML = f ? `<div style="font-size:10px;color:#3a5a7a;margin-bottom:6px">Searching: <code style="color:#ffbe0b">${f[0]}</code> ≥ value</div>` : '';
+  }
+}
+
+// ── EVENTS ──
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadPreset(btn.dataset.preset);
+  });
+});
+
+document.querySelectorAll('.stype-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.stype-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    searchType = btn.dataset.type;
+    updateSearchHint();
+  });
+});
+
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') doSearch();
+});
+
+// ── INIT ──
+loadPreset('movies');
+</script>
+</body>
+</html>
