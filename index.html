@@ -43,19 +43,20 @@
   .title p { color: rgba(255,255,255,0.2); font-size: 11px; margin-top: 8px; letter-spacing: 4px; }
 
   /* Grid */
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 880px; margin: 20px auto; padding: 0 24px; position: relative; z-index: 1; }
+  .grid { display: flex; flex-direction: column; gap: 16px; max-width: 700px; margin: 20px auto; padding: 0 24px; position: relative; z-index: 1; }
 
-  /* Cards — each unique */
-  .card { text-decoration: none; color: inherit; border-radius: 20px; overflow: hidden; position: relative; transition: transform 0.5s cubic-bezier(0.175,0.885,0.32,1.275), box-shadow 0.4s; }
-  .card:hover { transform: translateY(-8px) scale(1.02); }
-  .card:hover .card-bg { transform: scale(1.05); }
-  .card:hover .card-info h2 { color: #fff; }
+  .card { text-decoration: none; color: inherit; border-radius: 16px; overflow: hidden; position: relative; transition: transform 0.5s cubic-bezier(0.175,0.885,0.32,1.275), box-shadow 0.4s; display: flex; flex-direction: row; }
+  .card:hover { transform: translateY(-4px) scale(1.01); }
 
   .card-bg { position: absolute; inset: 0; transition: transform 0.6s; }
-  .card-info { position: relative; z-index: 1; padding: 30px; min-height: 220px; display: flex; flex-direction: column; justify-content: flex-end; }
-  .card-info .icon { font-size: 36px; margin-bottom: 12px; filter: drop-shadow(0 0 12px var(--glow)); }
-  .card-info h2 { font-size: 18px; color: rgba(255,255,255,0.85); margin-bottom: 6px; transition: color 0.3s; letter-spacing: 1px; }
-  .card-info p { font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.6; }
+  .card-info { position: relative; z-index: 1; padding: 24px 28px; display: flex; align-items: center; gap: 20px; width: 100%; }
+  .card-info .icon { font-size: 32px; filter: drop-shadow(0 0 12px var(--glow)); flex-shrink: 0; }
+  .card-info .text { flex: 1; }
+  .card-info h2 { font-size: 16px; color: rgba(255,255,255,0.85); margin-bottom: 4px; transition: color 0.3s; letter-spacing: 1px; }
+  .card-info p { font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.5; }
+  .card-info .arrow { color: rgba(255,255,255,0.15); font-size: 18px; transition: all 0.3s; flex-shrink: 0; }
+  .card:hover .card-info .arrow { color: var(--glow); transform: translateX(4px); }
+  .card:hover .card-info h2 { color: #fff; }
 
   /* ── Card 1: Roulette — Spinning galaxy */
   .card-galaxy .card-bg {
@@ -104,7 +105,7 @@
   footer { text-align: center; padding: 40px 20px; font-size: 10px; color: rgba(255,255,255,0.08); position: relative; z-index: 1; }
   footer a { color: rgba(255,255,255,0.15); text-decoration: none; }
 
-  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) { .grid { padding: 0 16px; } }
 </style>
 </head>
 <body>
@@ -120,32 +121,31 @@
 <div class="grid">
   <a class="card card-galaxy" href="index-viz/" style="--glow:rgba(255,100,100,0.5)">
     <div class="card-bg" style="background:radial-gradient(ellipse at 40% 60%,rgba(255,100,100,0.15),transparent 50%),radial-gradient(ellipse at 70% 30%,rgba(255,180,50,0.1),transparent 50%),#0e0810"></div>
-    <div class="card-info"><div class="icon">📇</div><h2>Inverted Index Visualizer</h2><p>See how documents become searchable, step by step</p></div>
+    <div class="card-info"><div class="icon">📇</div><div class="text"><h2>Inverted Index Visualizer</h2><p>See how documents become searchable, step by step</p></div><div class="arrow">→</div></div>
   </a>
 
   <a class="card card-comet" href="playground/" style="--glow:rgba(255,190,11,0.5)">
     <div class="card-bg"></div>
-    <div class="streak" style="--top:20%;--dur:3s"></div>
-    <div class="streak" style="--top:45%;--dur:4s"></div>
-    <div class="streak" style="--top:70%;--dur:3.5s"></div>
-    <div class="card-info"><div class="icon">🧪</div><h2>Query Playground</h2><p>Learn OpenSearch queries with live results</p></div>
+    <div class="streak" style="--top:30%;--dur:3s"></div>
+    <div class="streak" style="--top:60%;--dur:4s"></div>
+    <div class="card-info"><div class="icon">🧪</div><div class="text"><h2>Query Playground</h2><p>Learn OpenSearch queries with live results</p></div><div class="arrow">→</div></div>
   </a>
 
   <a class="card card-radar" href="pr-feed/" style="--glow:rgba(0,229,160,0.5)">
     <div class="card-bg"></div>
     <div class="ring"></div><div class="ring"></div><div class="ring"></div>
-    <div class="card-info"><div class="icon">✈️</div><h2>PR Departures</h2><p>Live departure board of pull request activity</p></div>
+    <div class="card-info"><div class="icon">✈️</div><div class="text"><h2>PR Departures</h2><p>Live departure board of pull request activity</p></div><div class="arrow">→</div></div>
   </a>
 
   <a class="card card-wormhole" href="galaxy/" style="--glow:rgba(131,56,236,0.5)">
     <div class="card-bg"></div>
     <div class="vortex"></div><div class="vortex"></div><div class="vortex"></div>
-    <div class="card-info"><div class="icon">🌌</div><h2>Dependency Galaxy</h2><p>3D map of plugin dependencies</p></div>
+    <div class="card-info"><div class="icon">🌌</div><div class="text"><h2>Dependency Galaxy</h2><p>3D map of plugin dependencies</p></div><div class="arrow">→</div></div>
   </a>
 
   <a class="card card-galaxy" href="roulette/" style="--glow:rgba(0,180,216,0.5)">
     <div class="card-bg"></div>
-    <div class="card-info"><div class="icon">🎰</div><h2>Repo Roulette</h2><p>Spin the wheel, find your next open-source contribution</p></div>
+    <div class="card-info"><div class="icon">🎰</div><div class="text"><h2>Repo Roulette</h2><p>Spin the wheel, find your next open-source contribution</p></div><div class="arrow">→</div></div>
   </a>
 </div>
 
