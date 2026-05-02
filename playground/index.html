@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenSearch Query Playground</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a12; color: #e0f0ff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace; height: 100vh; display: flex; flex-direction: column; }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: #0d1a2a; border-bottom: 1px solid #1a2a44; }
+  header h1 { font-size: 16px; letter-spacing: 1px; }
+  header h1 span { color: #00b4d8; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  select { background: #0a1628; color: #e0f0ff; border: 1px solid #1a2a44; padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .panel-header { padding: 8px 16px; background: #0d1a2a; border-bottom: 1px solid #1a2a44; font-size: 11px; color: #4a6a8a; font-weight: 600; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; }
+  .divider { width: 4px; background: #1a2a44; cursor: col-resize; }
+
+  textarea { flex: 1; background: #04080f; color: #e0f0ff; border: none; padding: 16px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; line-height: 1.6; resize: none; outline: none; tab-size: 2; }
+  .output { flex: 1; background: #04080f; padding: 16px; overflow: auto; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+
+  .run-btn { background: #00b4d8; color: #fff; border: none; padding: 5px 14px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+  .run-btn:hover { background: #0096b7; }
+
+  .error { color: #ff6b6b; }
+  .key { color: #00b4d8; }
+  .str { color: #00e5a0; }
+  .num { color: #ffbe0b; }
+  .bool { color: #8338ec; }
+  .null { color: #636e72; }
+  .hit-score { color: #ff006e; font-weight: bold; }
+
+  .examples-bar { padding: 6px 16px; background: #0a1020; border-bottom: 1px solid #1a2a44; display: flex; gap: 6px; overflow-x: auto; }
+  .ex-btn { background: #0d1a2a; color: #5a8aaa; border: 1px solid #1a2a44; padding: 4px 10px; border-radius: 12px; font-size: 10px; cursor: pointer; white-space: nowrap; }
+  .ex-btn:hover { color: #00b4d8; border-color: #00b4d8; }
+
+  .info { padding: 8px 16px; background: #0a1020; border-top: 1px solid #1a2a44; font-size: 10px; color: #3a5a7a; }
+  .info span { color: #00e5a0; }
+
+  .bottom-bar { display: flex; border-top: 1px solid #1a2a44; height: 200px; overflow: hidden; }
+  .bottom-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .bottom-panel .panel-header { cursor: pointer; }
+  .bottom-panel .panel-header:hover { background: #0f2030; }
+  .bottom-content { flex: 1; overflow: auto; padding: 12px 16px; background: #04080f; font-size: 12px; line-height: 1.7; }
+  .explain-step { margin: 6px 0; padding: 6px 10px; border-left: 3px solid #1a2a44; background: #0a1020; border-radius: 0 6px 6px 0; }
+  .explain-step.filter { border-left-color: #00b4d8; }
+  .explain-step.score { border-left-color: #ffbe0b; }
+  .explain-step.result { border-left-color: #00e5a0; }
+  .explain-step .step-label { font-size: 9px; font-weight: 700; letter-spacing: 1px; margin-bottom: 2px; }
+  .explain-step.filter .step-label { color: #00b4d8; }
+  .explain-step.score .step-label { color: #ffbe0b; }
+  .explain-step.result .step-label { color: #00e5a0; }
+  .explain-step .step-text { color: #a0b8d0; font-size: 11px; }
+  .explain-step .step-text code { color: #00e5a0; background: #0d1a2a; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+  .mapping-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .mapping-table th { text-align: left; color: #4a6a8a; font-size: 9px; letter-spacing: 1px; padding: 4px 8px; border-bottom: 1px solid #1a2a44; }
+  .mapping-table td { padding: 4px 8px; border-bottom: 1px solid #0d1a2a; color: #a0b8d0; }
+  .mapping-table .type-badge { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 9px; font-weight: 600; }
+  .type-text { background: #00b4d822; color: #00b4d8; }
+  .type-keyword { background: #8338ec22; color: #8338ec; }
+  .type-number { background: #ffbe0b22; color: #ffbe0b; }
+  .type-bool { background: #00e5a022; color: #00e5a0; }
+  .type-date { background: #ff006e22; color: #ff006e; }
+  .mapping-note { color: #3a5a7a; font-size: 10px; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔍 <span>OpenSearch</span> Query Playground</h1>
+  <div class="header-right">
+    <select id="dataset">
+      <option value="movies">🎬 Movies (50 docs)</option>
+      <option value="ecommerce">🛒 E-commerce (50 docs)</option>
+      <option value="logs">📋 Logs (50 docs)</option>
+    </select>
+  </div>
+</header>
+
+<div class="examples-bar" id="examplesBar"></div>
+
+<div class="main">
+  <div class="panel">
+    <div class="panel-header">
+      QUERY EDITOR
+      <button class="run-btn" id="runBtn">▶ Run (⌘↵)</button>
+    </div>
+    <textarea id="editor" spellcheck="false">{
+  "query": {
+    "match_all": {}
+  },
+  "size": 5
+}</textarea>
+  </div>
+  <div class="divider" id="divider"></div>
+  <div class="panel">
+    <div class="panel-header">RESULTS <span id="resultMeta"></span></div>
+    <div class="output" id="output">Press ▶ Run or ⌘↵ to execute a query</div>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <div class="bottom-panel">
+    <div class="panel-header">📖 QUERY EXPLAINER</div>
+    <div class="bottom-content" id="explainer">Run a query to see how it works step by step</div>
+  </div>
+  <div class="divider"></div>
+  <div class="bottom-panel">
+    <div class="panel-header">🗂 INDEX MAPPING</div>
+    <div class="bottom-content" id="mapping"></div>
+  </div>
+</div>
+
+<div class="info">
+  <span id="docCount">0</span> documents loaded · Client-side query evaluation · No backend required
+</div>
+
+<script>
+// ── SAMPLE DATA ──
+const DATASETS = {
+  movies: generateMovies(),
+  ecommerce: generateEcommerce(),
+  logs: generateLogs()
+};
+
+function generateMovies() {
+  const titles = ["The Matrix","Inception","Interstellar","Pulp Fiction","The Godfather","Fight Club","Forrest Gump","The Dark Knight","Goodfellas","Schindler's List","The Shawshank Redemption","Parasite","Whiplash","Arrival","Blade Runner 2049","Mad Max: Fury Road","The Grand Budapest Hotel","No Country for Old Men","There Will Be Blood","The Social Network","Dune","Everything Everywhere All at Once","Oppenheimer","Barbie","Spider-Man: Into the Spider-Verse","Coco","Inside Out","WALL-E","Up","Toy Story","Finding Nemo","Ratatouille","The Incredibles","Monsters Inc","Spirited Away","Princess Mononoke","Akira","Ghost in the Shell","Your Name","Oldboy","The Departed","Gladiator","Braveheart","Titanic","Avatar","Jurassic Park","E.T.","Jaws","Alien","The Terminator"];
+  const genres = ["Action","Drama","Sci-Fi","Comedy","Thriller","Animation","Horror","Romance"];
+  const dirs = ["Christopher Nolan","Quentin Tarantino","Steven Spielberg","Martin Scorsese","Denis Villeneuve","Hayao Miyazaki","Greta Gerwig","Bong Joon-ho","David Fincher","Ridley Scott"];
+  return titles.map((t, i) => ({
+    _id: `movie_${i}`, title: t,
+    genre: genres[i % genres.length],
+    director: dirs[i % dirs.length],
+    year: 1975 + Math.floor(i * 1.02),
+    rating: +(3.5 + Math.random() * 1.5).toFixed(1),
+    votes: Math.floor(1000 + Math.random() * 99000),
+    description: `A ${genres[i%genres.length].toLowerCase()} film directed by ${dirs[i%dirs.length]}.`
+  }));
+}
+
+function generateEcommerce() {
+  const products = ["Wireless Headphones","Mechanical Keyboard","USB-C Hub","Monitor Stand","Webcam HD","Desk Lamp","Mouse Pad XL","Laptop Stand","Cable Organizer","Power Strip","Bluetooth Speaker","Smart Watch","Phone Case","Screen Protector","Charging Cable","Portable SSD","Memory Card","USB Drive","Ethernet Adapter","HDMI Cable","Desk Mat","Wrist Rest","Monitor Light","Ring Light","Microphone","Pop Filter","Boom Arm","Stream Deck","Capture Card","Drawing Tablet","Stylus Pen","Keyboard Cover","Laptop Sleeve","Backpack","Docking Station","KVM Switch","Air Purifier","Desk Fan","Coffee Mug","Water Bottle","Notebook","Pen Set","Sticky Notes","Whiteboard","Marker Set","Eraser","Tape Dispenser","Stapler","Paper Clips","Binder Clips"];
+  const cats = ["Electronics","Accessories","Audio","Office","Storage","Peripherals"];
+  const brands = ["TechPro","GearUp","NovaTech","SwiftByte","CoreLink","PixelWave"];
+  return products.map((p, i) => ({
+    _id: `prod_${i}`, name: p,
+    category: cats[i % cats.length],
+    brand: brands[i % brands.length],
+    price: +(9.99 + Math.random() * 190).toFixed(2),
+    in_stock: Math.random() > 0.2,
+    rating: +(2.5 + Math.random() * 2.5).toFixed(1),
+    reviews: Math.floor(Math.random() * 500),
+    description: `High quality ${p.toLowerCase()} from ${brands[i%brands.length]}.`
+  }));
+}
+
+function generateLogs() {
+  const levels = ["INFO","WARN","ERROR","DEBUG","INFO","INFO","INFO","WARN","ERROR","INFO"];
+  const services = ["api-gateway","auth-service","search-engine","indexer","dashboard","query-processor"];
+  const msgs = ["Request processed successfully","Connection timeout","Index refresh completed","Query took longer than threshold","Authentication failed","Cache miss","Shard allocation changed","Cluster health yellow","Node joined cluster","Bulk indexing completed"];
+  const base = Date.now() - 86400000;
+  return Array.from({length: 50}, (_, i) => ({
+    _id: `log_${i}`,
+    timestamp: new Date(base + i * 1700000).toISOString(),
+    level: levels[i % levels.length],
+    service: services[i % services.length],
+    message: msgs[i % msgs.length],
+    response_time_ms: Math.floor(5 + Math.random() * 995),
+    status_code: [200,200,200,201,400,401,404,500,502,503][i % 10],
+    host: `node-${(i % 3) + 1}.opensearch.local`
+  }));
+}
+
+// ── QUERY ENGINE ──
+let currentData = [];
+
+function loadDataset(name) {
+  currentData = DATASETS[name] || [];
+  document.getElementById('docCount').textContent = currentData.length;
+}
+
+function matchField(docValue, queryValue) {
+  if (docValue === undefined || docValue === null) return false;
+  const dv = String(docValue).toLowerCase();
+  const terms = String(queryValue).toLowerCase().split(/\s+/);
+  return terms.some(t => dv.includes(t));
+}
+
+function evaluateQuery(queryObj) {
+  if (!queryObj) return currentData;
+  if (queryObj.match_all !== undefined) return currentData;
+
+  if (queryObj.match) {
+    const [field, val] = Object.entries(queryObj.match)[0];
+    const query = typeof val === 'object' ? val.query : val;
+    return currentData.filter(d => matchField(d[field], query));
+  }
+
+  if (queryObj.term) {
+    const [field, val] = Object.entries(queryObj.term)[0];
+    const value = typeof val === 'object' ? val.value : val;
+    return currentData.filter(d => d[field] === value || String(d[field]) === String(value));
+  }
+
+  if (queryObj.terms) {
+    const [field, values] = Object.entries(queryObj.terms)[0];
+    return currentData.filter(d => values.includes(d[field]));
+  }
+
+  if (queryObj.range) {
+    const [field, conds] = Object.entries(queryObj.range)[0];
+    return currentData.filter(d => {
+      const v = d[field];
+      if (conds.gte !== undefined && v < conds.gte) return false;
+      if (conds.gt !== undefined && v <= conds.gt) return false;
+      if (conds.lte !== undefined && v > conds.lte) return false;
+      if (conds.lt !== undefined && v >= conds.lt) return false;
+      return true;
+    });
+  }
+
+  if (queryObj.bool) {
+    let results = [...currentData];
+    if (queryObj.bool.must) {
+      for (const q of [].concat(queryObj.bool.must)) {
+        const matched = new Set(evaluateQuery(q).map(d => d._id));
+        results = results.filter(d => matched.has(d._id));
+      }
+    }
+    if (queryObj.bool.should) {
+      const shouldSets = [].concat(queryObj.bool.should).map(q => new Set(evaluateQuery(q).map(d => d._id)));
+      const min = queryObj.bool.minimum_should_match || 1;
+      results = results.filter(d => shouldSets.filter(s => s.has(d._id)).length >= min);
+    }
+    if (queryObj.bool.must_not) {
+      for (const q of [].concat(queryObj.bool.must_not)) {
+        const excluded = new Set(evaluateQuery(q).map(d => d._id));
+        results = results.filter(d => !excluded.has(d._id));
+      }
+    }
+    if (queryObj.bool.filter) {
+      for (const q of [].concat(queryObj.bool.filter)) {
+        const matched = new Set(evaluateQuery(q).map(d => d._id));
+        results = results.filter(d => matched.has(d._id));
+      }
+    }
+    return results;
+  }
+
+  if (queryObj.wildcard) {
+    const [field, val] = Object.entries(queryObj.wildcard)[0];
+    const pattern = (typeof val === 'object' ? val.value : val).replace(/\*/g, '.*').replace(/\?/g, '.');
+    const re = new RegExp(`^${pattern}$`, 'i');
+    return currentData.filter(d => re.test(String(d[field] || '')));
+  }
+
+  if (queryObj.exists) {
+    return currentData.filter(d => d[queryObj.exists.field] !== undefined && d[queryObj.exists.field] !== null);
+  }
+
+  return currentData;
+}
+
+function computeAggs(aggsObj, docs) {
+  const result = {};
+  for (const [name, agg] of Object.entries(aggsObj)) {
+    if (agg.terms) {
+      const field = agg.terms.field;
+      const size = agg.terms.size || 10;
+      const counts = {};
+      docs.forEach(d => { const v = d[field]; if (v !== undefined) counts[v] = (counts[v]||0) + 1; });
+      const buckets = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, size).map(([key, count]) => ({key, doc_count: count}));
+      result[name] = { buckets };
+    }
+    if (agg.avg) {
+      const vals = docs.map(d => d[agg.avg.field]).filter(v => typeof v === 'number');
+      result[name] = { value: vals.length ? +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2) : null };
+    }
+    if (agg.max) {
+      const vals = docs.map(d => d[agg.max.field]).filter(v => typeof v === 'number');
+      result[name] = { value: vals.length ? Math.max(...vals) : null };
+    }
+    if (agg.min) {
+      const vals = docs.map(d => d[agg.min.field]).filter(v => typeof v === 'number');
+      result[name] = { value: vals.length ? Math.min(...vals) : null };
+    }
+    if (agg.sum) {
+      const vals = docs.map(d => d[agg.sum.field]).filter(v => typeof v === 'number');
+      result[name] = { value: vals.reduce((a,b)=>a+b, 0) };
+    }
+    if (agg.value_count) {
+      result[name] = { value: docs.filter(d => d[agg.value_count.field] !== undefined).length };
+    }
+  }
+  return result;
+}
+
+function runQuery() {
+  const editor = document.getElementById('editor');
+  const output = document.getElementById('output');
+  const meta = document.getElementById('resultMeta');
+  const explainer = document.getElementById('explainer');
+  const start = performance.now();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(editor.value);
+  } catch(e) {
+    output.innerHTML = `<span class="error">JSON Parse Error: ${e.message}</span>`;
+    meta.textContent = '';
+    return;
+  }
+
+  try {
+    const query = parsed.query || { match_all: {} };
+    let hits = evaluateQuery(query);
+
+    // Sort
+    if (parsed.sort) {
+      const sorts = [].concat(parsed.sort);
+      hits.sort((a, b) => {
+        for (const s of sorts) {
+          if (typeof s === 'string') {
+            if (a[s] < b[s]) return -1; if (a[s] > b[s]) return 1;
+          } else {
+            const [field, conf] = Object.entries(s)[0];
+            const order = (typeof conf === 'object' ? conf.order : conf) || 'asc';
+            const mul = order === 'desc' ? -1 : 1;
+            if (a[field] < b[field]) return -mul; if (a[field] > b[field]) return mul;
+          }
+        }
+        return 0;
+      });
+    }
+
+    const total = hits.length;
+    const from = parsed.from || 0;
+    const size = parsed.size !== undefined ? parsed.size : 10;
+    const paged = hits.slice(from, from + size);
+    const took = (performance.now() - start).toFixed(1);
+
+    const response = {
+      took: +took,
+      hits: {
+        total: { value: total, relation: "eq" },
+        hits: paged.map(d => ({ _id: d._id, _source: Object.fromEntries(Object.entries(d).filter(([k]) => k !== '_id')) }))
+      }
+    };
+
+    if (parsed.aggs || parsed.aggregations) {
+      response.aggregations = computeAggs(parsed.aggs || parsed.aggregations, hits);
+    }
+
+    if (parsed._source === false) {
+      response.hits.hits = response.hits.hits.map(h => ({ _id: h._id }));
+    } else if (Array.isArray(parsed._source)) {
+      const fields = parsed._source;
+      response.hits.hits = response.hits.hits.map(h => ({
+        _id: h._id,
+        _source: Object.fromEntries(Object.entries(h._source).filter(([k]) => fields.includes(k)))
+      }));
+    }
+
+    meta.textContent = `${total} hits · ${took}ms`;
+    output.innerHTML = syntaxHighlight(JSON.stringify(response, null, 2));
+    explainer.innerHTML = explainQuery(parsed, total);
+  } catch(e) {
+    output.innerHTML = `<span class="error">Query Error: ${e.message}</span>`;
+    meta.textContent = '';
+    explainer.innerHTML = '';
+  }
+}
+
+function syntaxHighlight(json) {
+  return json.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"([^"]+)":/g, '<span class="key">"$1"</span>:')
+    .replace(/: "([^"]*)"/g, ': <span class="str">"$1"</span>')
+    .replace(/: (\d+\.?\d*)/g, ': <span class="num">$1</span>')
+    .replace(/: (true|false)/g, ': <span class="bool">$1</span>')
+    .replace(/: (null)/g, ': <span class="null">$1</span>');
+}
+
+// ── QUERY EXPLAINER ──
+function explainQuery(parsed, totalHits) {
+  const steps = [];
+  const q = parsed.query || {};
+
+  if (q.match_all !== undefined) {
+    steps.push({type:'filter', label:'MATCH ALL', text:'Returns every document in the index. No filtering or scoring applied.'});
+  }
+  if (q.match) {
+    const [field, val] = Object.entries(q.match)[0];
+    const query = typeof val === 'object' ? val.query : val;
+    steps.push({type:'score', label:'MATCH (full-text)', text:`Analyzes <code>${query}</code> into tokens and searches the <code>${field}</code> field. Each token is looked up independently. Documents containing any token get a relevance score. This is a <em>scoring</em> query — results are ranked by how well they match.`});
+  }
+  if (q.term) {
+    const [field, val] = Object.entries(q.term)[0];
+    const value = typeof val === 'object' ? val.value : val;
+    steps.push({type:'filter', label:'TERM (exact match)', text:`Looks for the exact value <code>${value}</code> in the <code>${field}</code> field. No analysis is applied — the value must match exactly. Use <code>term</code> for keyword, boolean, and numeric fields. For text fields, use <code>match</code> instead.`});
+  }
+  if (q.terms) {
+    const [field, values] = Object.entries(q.terms)[0];
+    steps.push({type:'filter', label:'TERMS (multi-value)', text:`Matches documents where <code>${field}</code> is any of: <code>${values.join('</code>, <code>')}</code>. Like an OR of multiple term queries.`});
+  }
+  if (q.range) {
+    const [field, conds] = Object.entries(q.range)[0];
+    const parts = [];
+    if (conds.gte !== undefined) parts.push(`≥ ${conds.gte}`);
+    if (conds.gt !== undefined) parts.push(`> ${conds.gt}`);
+    if (conds.lte !== undefined) parts.push(`≤ ${conds.lte}`);
+    if (conds.lt !== undefined) parts.push(`< ${conds.lt}`);
+    steps.push({type:'filter', label:'RANGE', text:`Filters <code>${field}</code> to values ${parts.join(' and ')}. Range queries are typically used as filters (no scoring) on numeric or date fields.`});
+  }
+  if (q.bool) {
+    steps.push({type:'score', label:'BOOL (compound query)', text:'Combines multiple clauses. Each clause type has a different role:'});
+    if (q.bool.must) {
+      const clauses = [].concat(q.bool.must);
+      steps.push({type:'score', label:'↳ MUST', text:`${clauses.length} clause(s) that <strong>must match</strong>. These affect the relevance score — documents matching better rank higher.`});
+    }
+    if (q.bool.filter) {
+      const clauses = [].concat(q.bool.filter);
+      steps.push({type:'filter', label:'↳ FILTER', text:`${clauses.length} clause(s) that <strong>must match</strong> but do <strong>not affect scoring</strong>. Faster than must because OpenSearch can cache filter results. Use for exact conditions like date ranges.`});
+    }
+    if (q.bool.should) {
+      const clauses = [].concat(q.bool.should);
+      const min = q.bool.minimum_should_match || 1;
+      steps.push({type:'score', label:'↳ SHOULD', text:`${clauses.length} clause(s) where at least <code>${min}</code> should match. Matching more clauses boosts the score. Think of these as "nice to have" conditions.`});
+    }
+    if (q.bool.must_not) {
+      const clauses = [].concat(q.bool.must_not);
+      steps.push({type:'filter', label:'↳ MUST NOT', text:`${clauses.length} clause(s) that <strong>exclude</strong> documents. No scoring impact. Documents matching any must_not clause are removed.`});
+    }
+  }
+  if (q.wildcard) {
+    const [field] = Object.keys(q.wildcard);
+    steps.push({type:'filter', label:'WILDCARD', text:`Pattern matching on <code>${field}</code>. <code>*</code> matches any characters, <code>?</code> matches one. Wildcard queries can be slow on large indices — avoid leading wildcards like <code>*search</code>.`});
+  }
+  if (q.exists) {
+    steps.push({type:'filter', label:'EXISTS', text:`Matches documents where <code>${q.exists.field}</code> has any non-null value. Useful for checking if optional fields are populated.`});
+  }
+
+  // Top-level options
+  if (parsed.sort) {
+    const sorts = [].concat(parsed.sort);
+    const desc = sorts.map(s => {
+      if (typeof s === 'string') return `<code>${s}</code> asc`;
+      const [f, c] = Object.entries(s)[0];
+      const ord = (typeof c === 'object' ? c.order : c) || 'asc';
+      return `<code>${f}</code> ${ord}`;
+    });
+    steps.push({type:'filter', label:'SORT', text:`Results ordered by ${desc.join(', then ')}. When you sort explicitly, relevance scoring is bypassed.`});
+  }
+  if (parsed.size !== undefined) {
+    steps.push({type:'result', label:'SIZE', text:`Returning up to <code>${parsed.size}</code> documents. ${parsed.size === 0 ? 'Size 0 means only aggregation results are returned — no hits.' : ''}`});
+  }
+  if (parsed.from) {
+    steps.push({type:'result', label:'PAGINATION', text:`Skipping the first <code>${parsed.from}</code> results (from). Combined with size, this implements pagination.`});
+  }
+  if (parsed._source !== undefined) {
+    if (parsed._source === false) steps.push({type:'result', label:'SOURCE FILTER', text:'Source disabled — only <code>_id</code> is returned. Reduces response size when you only need IDs.'});
+    else if (Array.isArray(parsed._source)) steps.push({type:'result', label:'SOURCE FILTER', text:`Only returning fields: <code>${parsed._source.join('</code>, <code>')}</code>. Reduces network payload by excluding unneeded fields.`});
+  }
+  if (parsed.aggs || parsed.aggregations) {
+    const aggs = parsed.aggs || parsed.aggregations;
+    const names = Object.keys(aggs);
+    const descs = names.map(n => {
+      const a = aggs[n];
+      if (a.terms) return `<code>${n}</code>: groups by <code>${a.terms.field}</code> (top ${a.terms.size||10} buckets)`;
+      if (a.avg) return `<code>${n}</code>: average of <code>${a.avg.field}</code>`;
+      if (a.max) return `<code>${n}</code>: max of <code>${a.max.field}</code>`;
+      if (a.min) return `<code>${n}</code>: min of <code>${a.min.field}</code>`;
+      if (a.sum) return `<code>${n}</code>: sum of <code>${a.sum.field}</code>`;
+      return `<code>${n}</code>`;
+    });
+    steps.push({type:'result', label:'AGGREGATIONS', text:`Computing analytics across matched documents:<br>${descs.join('<br>')}.<br>Aggregations run on all matched docs, not just the returned page.`});
+  }
+
+  steps.push({type:'result', label:'RESULT', text:`<strong>${totalHits}</strong> documents matched out of <strong>${currentData.length}</strong> total.`});
+
+  return steps.map(s => `<div class="explain-step ${s.type}"><div class="step-label">${s.label}</div><div class="step-text">${s.text}</div></div>`).join('');
+}
+
+// ── INDEX MAPPING ──
+const FIELD_TYPES = {
+  movies: {
+    title: {type:'text', note:'Analyzed for full-text search. Use match queries.'},
+    genre: {type:'keyword', note:'Exact values only. Use term queries.'},
+    director: {type:'text', note:'Analyzed. Use match for partial name search.'},
+    year: {type:'integer', note:'Numeric. Supports range queries.'},
+    rating: {type:'float', note:'Decimal number. Good for range and sort.'},
+    votes: {type:'integer', note:'Count field. Use for range, sort, aggregations.'},
+    description: {type:'text', note:'Long text field. Analyzed for full-text search.'}
+  },
+  ecommerce: {
+    name: {type:'text', note:'Product name. Analyzed for search.'},
+    category: {type:'keyword', note:'Exact category. Use term/terms queries.'},
+    brand: {type:'keyword', note:'Exact brand name. Good for filtering and aggs.'},
+    price: {type:'float', note:'Decimal. Use range for price filtering.'},
+    in_stock: {type:'boolean', note:'true/false. Use term query.'},
+    rating: {type:'float', note:'Star rating. Range and sort friendly.'},
+    reviews: {type:'integer', note:'Review count. Numeric operations.'},
+    description: {type:'text', note:'Analyzed text for full-text search.'}
+  },
+  logs: {
+    timestamp: {type:'date', note:'ISO 8601 date. Use range for time windows.'},
+    level: {type:'keyword', note:'Log level. Use term to filter ERROR, WARN, etc.'},
+    service: {type:'keyword', note:'Service name. Good for term queries and aggs.'},
+    message: {type:'text', note:'Log message. Analyzed for full-text search.'},
+    response_time_ms: {type:'integer', note:'Latency in ms. Range for slow request detection.'},
+    status_code: {type:'integer', note:'HTTP status. Range ≥500 finds server errors.'},
+    host: {type:'keyword', note:'Hostname. Exact match with term queries.'}
+  }
+};
+
+const TYPE_CSS = {text:'type-text',keyword:'type-keyword',integer:'type-number',float:'type-number',boolean:'type-bool',date:'type-date'};
+
+function renderMapping(dataset) {
+  const fields = FIELD_TYPES[dataset] || {};
+  let html = '<table class="mapping-table"><tr><th>FIELD</th><th>TYPE</th><th>QUERY GUIDANCE</th></tr>';
+  for (const [name, info] of Object.entries(fields)) {
+    const css = TYPE_CSS[info.type] || '';
+    html += `<tr><td><code>${name}</code></td><td><span class="type-badge ${css}">${info.type}</span></td><td class="mapping-note">${info.note}</td></tr>`;
+  }
+  html += '</table>';
+  document.getElementById('mapping').innerHTML = html;
+}
+
+// ── EXAMPLES ──
+const EXAMPLES = {
+  movies: [
+    { name: "Match All", q: { query: { match_all: {} }, size: 5 } },
+    { name: "Match", q: { query: { match: { title: "dark knight" } }, size: 5 } },
+    { name: "Bool Query", q: { query: { bool: { must: [{ match: { genre: "Sci-Fi" }}], filter: [{ range: { year: { gte: 2000 }}}] }}, size: 5 } },
+    { name: "Range", q: { query: { range: { rating: { gte: 4.5 } } }, size: 5 } },
+    { name: "Sort", q: { query: { match_all: {} }, sort: [{ rating: "desc" }], size: 5 } },
+    { name: "Aggregation", q: { query: { match_all: {} }, size: 0, aggs: { genres: { terms: { field: "genre" } }, avg_rating: { avg: { field: "rating" } } } } },
+    { name: "Source Filter", q: { query: { match_all: {} }, _source: ["title", "year", "rating"], size: 5 } },
+  ],
+  ecommerce: [
+    { name: "Match All", q: { query: { match_all: {} }, size: 5 } },
+    { name: "In Stock", q: { query: { term: { in_stock: true } }, size: 5 } },
+    { name: "Price Range", q: { query: { range: { price: { gte: 50, lte: 100 } } }, size: 5 } },
+    { name: "Category Agg", q: { query: { match_all: {} }, size: 0, aggs: { categories: { terms: { field: "category" } }, avg_price: { avg: { field: "price" } } } } },
+    { name: "Cheap & Rated", q: { query: { bool: { must: [{ range: { price: { lte: 30 }}}], filter: [{ range: { rating: { gte: 4 }}}] }}, sort: [{ price: "asc" }], size: 5 } },
+  ],
+  logs: [
+    { name: "Match All", q: { query: { match_all: {} }, size: 5 } },
+    { name: "Errors Only", q: { query: { term: { level: "ERROR" } }, size: 10 } },
+    { name: "Slow Requests", q: { query: { range: { response_time_ms: { gte: 500 } } }, sort: [{ response_time_ms: "desc" }], size: 5 } },
+    { name: "By Service", q: { query: { match_all: {} }, size: 0, aggs: { services: { terms: { field: "service" } }, avg_response: { avg: { field: "response_time_ms" } } } } },
+    { name: "5xx Errors", q: { query: { range: { status_code: { gte: 500 } } }, size: 10 } },
+  ]
+};
+
+function loadExamples(dataset) {
+  const bar = document.getElementById('examplesBar');
+  bar.innerHTML = '';
+  (EXAMPLES[dataset] || []).forEach(ex => {
+    const btn = document.createElement('button');
+    btn.className = 'ex-btn';
+    btn.textContent = ex.name;
+    btn.onclick = () => {
+      document.getElementById('editor').value = JSON.stringify(ex.q, null, 2);
+      runQuery();
+    };
+    bar.appendChild(btn);
+  });
+}
+
+// ── INIT ──
+document.getElementById('dataset').addEventListener('change', e => {
+  loadDataset(e.target.value);
+  loadExamples(e.target.value);
+  renderMapping(e.target.value);
+});
+
+document.getElementById('runBtn').addEventListener('click', runQuery);
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); runQuery(); }
+});
+
+// Tab support in editor
+document.getElementById('editor').addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const t = e.target, s = t.selectionStart;
+    t.value = t.value.substring(0, s) + '  ' + t.value.substring(t.selectionEnd);
+    t.selectionStart = t.selectionEnd = s + 2;
+  }
+});
+
+// Resizable divider
+const divider = document.getElementById('divider');
+let dragging = false;
+divider.addEventListener('mousedown', () => dragging = true);
+document.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const main = document.querySelector('.main');
+  const panels = main.querySelectorAll('.panel');
+  const rect = main.getBoundingClientRect();
+  const pct = ((e.clientX - rect.left) / rect.width) * 100;
+  panels[0].style.flex = `0 0 ${pct}%`;
+  panels[1].style.flex = `0 0 ${100 - pct}%`;
+});
+document.addEventListener('mouseup', () => dragging = false);
+
+loadDataset('movies');
+loadExamples('movies');
+renderMapping('movies');
+</script>
+</body>
+</html>

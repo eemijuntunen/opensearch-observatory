@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenSearch Repo Roulette</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a12; color: #e0f0ff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+  h1 { margin-top: 24px; font-size: 28px; letter-spacing: 2px; }
+  h1 span { color: #00b4d8; }
+  .subtitle { color: #4a6a8a; font-size: 13px; margin-top: 6px; }
+  .stats { color: #3a5a7a; font-size: 12px; margin-top: 8px; }
+  .stats span { color: #00e5a0; font-weight: bold; }
+
+  .wheel-container { position: relative; margin: 30px 0 20px; }
+  canvas { display: block; }
+  .pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 28px solid #ff006e; filter: drop-shadow(0 0 6px #ff006e); z-index: 2; }
+
+  .btn { background: linear-gradient(135deg, #00b4d8, #0077b6); color: #fff; border: none; padding: 14px 40px; font-size: 16px; font-weight: bold; border-radius: 50px; cursor: pointer; letter-spacing: 1px; transition: all 0.2s; }
+  .btn:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(0,180,216,0.4); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-lucky { background: linear-gradient(135deg, #8338ec, #5a189a); margin-left: 12px; }
+  .btn-lucky:hover { box-shadow: 0 0 20px rgba(131,56,236,0.4); }
+  .buttons { margin: 10px 0 20px; display: flex; gap: 12px; }
+
+  .result { display: none; max-width: 500px; width: 90%; background: #0d1a2a; border: 1px solid #1a2a44; border-radius: 14px; padding: 24px; margin: 10px 0 30px; text-align: center; }
+  .result.show { display: block; animation: fadeIn 0.4s ease; }
+  .result h2 { color: #00b4d8; font-size: 20px; margin-bottom: 6px; }
+  .result .repo-name { color: #ffbe0b; font-size: 14px; margin-bottom: 16px; }
+  .issue-card { background: #0a1628; border: 1px solid #1a2a44; border-radius: 10px; padding: 16px; margin: 10px 0; text-align: left; }
+  .issue-card h3 { font-size: 14px; margin-bottom: 8px; }
+  .issue-card h3 a { color: #00e5a0; text-decoration: none; }
+  .issue-card h3 a:hover { text-decoration: underline; }
+  .issue-card .meta { color: #4a6a8a; font-size: 11px; }
+  .issue-card .labels { margin-top: 8px; }
+  .label { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin-right: 4px; font-weight: 600; }
+  .no-issues { color: #ff6b6b; font-size: 13px; margin: 16px 0; }
+  .try-again { color: #4a6a8a; font-size: 12px; margin-top: 12px; cursor: pointer; }
+  .try-again:hover { color: #00b4d8; }
+
+  .loading { color: #4a6a8a; font-size: 13px; margin: 20px 0; }
+  .loading::after { content: ''; animation: dots 1.5s infinite; }
+  @keyframes dots { 0% { content: ''; } 33% { content: '.'; } 66% { content: '..'; } 100% { content: '...'; } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  footer { color: #1a2a3a; font-size: 11px; margin: auto 0 16px; }
+  footer a { color: #3a5a7a; }
+</style>
+</head>
+<body>
+
+<h1>🎰 <span>OpenSearch</span> Repo Roulette</h1>
+<p class="subtitle">Spin the wheel, find your next open-source contribution</p>
+<p class="stats" id="stats"></p>
+
+<div class="wheel-container">
+  <div class="pointer"></div>
+  <canvas id="wheel" width="400" height="400"></canvas>
+</div>
+
+<div class="buttons">
+  <button class="btn" id="spinBtn" disabled>SPIN</button>
+  <button class="btn btn-lucky" id="luckyBtn" disabled>🍀 Feeling Lucky</button>
+</div>
+
+<p class="loading" id="loading">Loading repos</p>
+
+<div class="result" id="result">
+  <h2 id="resultTitle"></h2>
+  <p class="repo-name" id="resultRepo"></p>
+  <div id="issuesList"></div>
+  <p class="try-again" onclick="document.getElementById('result').classList.remove('show')">↑ Spin again</p>
+</div>
+
+<footer>Powered by the <a href="https://github.com/opensearch-project" target="_blank">opensearch-project</a> GitHub org</footer>
+
+<script>
+const ORG = 'opensearch-project';
+const COLORS = ['#00e5a0','#00b4d8','#8338ec','#ff006e','#fb5607','#ffbe0b','#3a86ff','#06d6a0','#ef476f','#118ab2','#f89820','#3572A5','#A97BFF','#89e051'];
+
+let repos = [];
+let spinning = false;
+let angle = 0;
+
+const canvas = document.getElementById('wheel');
+const dpr = window.devicePixelRatio || 1;
+const W = 400, H = 400, CX = W/2, CY = H/2, R = 180;
+canvas.width = W * dpr;
+canvas.height = H * dpr;
+canvas.style.width = W + 'px';
+canvas.style.height = H + 'px';
+const ctx = canvas.getContext('2d');
+ctx.scale(dpr, dpr);
+
+async function fetchRepos() {
+  try {
+    const res = await fetch(`https://api.github.com/orgs/${ORG}/repos?per_page=100&sort=stars`);
+    const data = await res.json();
+    repos = data.filter(r => !r.archived && !r.fork).slice(0, 14);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('spinBtn').disabled = false;
+    document.getElementById('luckyBtn').disabled = false;
+
+    // Count good first issues
+    let total = 0;
+    for (const r of repos) total += r.open_issues_count;
+    document.getElementById('stats').innerHTML = `<span>${repos.length}</span> repos · <span>${total.toLocaleString()}</span> open issues across the org`;
+
+    drawWheel(0);
+  } catch(e) {
+    document.getElementById('loading').textContent = 'Failed to load repos. Try refreshing.';
+  }
+}
+
+function drawWheel(rotation) {
+  ctx.clearRect(0, 0, W, H);
+  const n = repos.length;
+  const arc = (2 * Math.PI) / n;
+
+  // Shadow
+  ctx.beginPath();
+  ctx.arc(CX, CY, R + 4, 0, 2 * Math.PI);
+  ctx.fillStyle = 'rgba(0,180,216,0.08)';
+  ctx.fill();
+
+  for (let i = 0; i < n; i++) {
+    const start = rotation + i * arc;
+    const end = start + arc;
+
+    // Segment
+    ctx.beginPath();
+    ctx.moveTo(CX, CY);
+    ctx.arc(CX, CY, R, start, end);
+    ctx.closePath();
+    ctx.fillStyle = COLORS[i % COLORS.length];
+    ctx.globalAlpha = 0.8;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#0a0a12';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Label
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.rotate(start + arc / 2);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 9px -apple-system, sans-serif';
+    ctx.textAlign = 'right';
+    const name = repos[i].name.length > 20 ? repos[i].name.slice(0, 18) + '..' : repos[i].name;
+    ctx.fillText(name, R - 12, 3);
+    ctx.restore();
+  }
+
+  // Center circle
+  ctx.beginPath();
+  ctx.arc(CX, CY, 28, 0, 2 * Math.PI);
+  ctx.fillStyle = '#0a0a12';
+  ctx.fill();
+  ctx.strokeStyle = '#00b4d8';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#00b4d8';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('OS', CX, CY + 3);
+}
+
+function getWinnerIndex(finalAngle) {
+  const n = repos.length;
+  const arc = (2 * Math.PI) / n;
+  // Pointer is at top (270deg = -PI/2)
+  const pointerAngle = -Math.PI / 2;
+  let normalized = ((pointerAngle - finalAngle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+  return Math.floor(normalized / arc) % n;
+}
+
+async function fetchGoodFirstIssues(repoName) {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${ORG}/${repoName}/issues?labels=good+first+issue&state=open&per_page=5`);
+    return await res.json();
+  } catch { return []; }
+}
+
+function showResult(repo, issues) {
+  const el = document.getElementById('result');
+  document.getElementById('resultTitle').textContent = '🎯 ' + repo.name;
+  document.getElementById('resultRepo').textContent = `⭐ ${repo.stargazers_count.toLocaleString()} stars · ${repo.language || 'Mixed'} · ${repo.open_issues_count} issues`;
+
+  const list = document.getElementById('issuesList');
+  if (!issues.length) {
+    list.innerHTML = `<p class="no-issues">No "good first issue" labels found in this repo.</p>
+      <p style="color:#4a6a8a;font-size:12px">Try <a href="https://github.com/${ORG}/${repo.name}/issues" target="_blank" style="color:#00b4d8">browsing all issues</a> instead.</p>`;
+  } else {
+    list.innerHTML = issues.map(issue => {
+      const labels = issue.labels.map(l =>
+        `<span class="label" style="background:#${l.color}22;color:#${l.color}">${l.name}</span>`
+      ).join('');
+      const date = new Date(issue.created_at).toLocaleDateString();
+      return `<div class="issue-card">
+        <h3><a href="${issue.html_url}" target="_blank">${issue.title}</a></h3>
+        <p class="meta">#${issue.number} · opened ${date} · ${issue.comments} comments</p>
+        <div class="labels">${labels}</div>
+      </div>`;
+    }).join('');
+  }
+  el.classList.add('show');
+}
+
+async function spin() {
+  if (spinning) return;
+  spinning = true;
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('spinBtn').disabled = true;
+  document.getElementById('luckyBtn').disabled = true;
+
+  const spins = 4 + Math.random() * 4;
+  const targetAngle = angle + spins * 2 * Math.PI;
+  const duration = 3000 + Math.random() * 1000;
+  const start = performance.now();
+
+  function animate(now) {
+    const elapsed = now - start;
+    const t = Math.min(elapsed / duration, 1);
+    // Ease out cubic
+    const ease = 1 - Math.pow(1 - t, 3);
+    const current = angle + (targetAngle - angle) * ease;
+    drawWheel(current);
+    if (t < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      angle = targetAngle % (2 * Math.PI);
+      const idx = getWinnerIndex(angle);
+      onWinner(repos[idx]);
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+async function onWinner(repo) {
+  const issues = await fetchGoodFirstIssues(repo.name);
+  showResult(repo, Array.isArray(issues) ? issues : []);
+  spinning = false;
+  document.getElementById('spinBtn').disabled = false;
+  document.getElementById('luckyBtn').disabled = false;
+}
+
+async function feelingLucky() {
+  if (spinning) return;
+  document.getElementById('result').classList.remove('show');
+  const repo = repos[Math.floor(Math.random() * repos.length)];
+  const issues = await fetchGoodFirstIssues(repo.name);
+  showResult(repo, Array.isArray(issues) ? issues : []);
+}
+
+document.getElementById('spinBtn').addEventListener('click', spin);
+document.getElementById('luckyBtn').addEventListener('click', feelingLucky);
+fetchRepos();
+</script>
+</body>
+</html>

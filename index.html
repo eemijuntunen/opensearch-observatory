@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenSearch Observatory</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; background: #020810; overflow-x: hidden; }
+
+  /* Starfield */
+  .stars, .stars2, .stars3 { position: fixed; top: 0; left: 0; width: 1px; height: 1px; border-radius: 50%; }
+  .stars { box-shadow:
+    24px 30px #fff3,120px 80px #fff4,230px 20px #fff2,400px 60px #fff3,550px 40px #fff4,680px 90px #fff2,80px 150px #fff3,300px 130px #fff4,500px 170px #fff2,650px 120px #fff3,
+    50px 220px #fff4,180px 260px #fff2,350px 200px #fff3,520px 250px #fff4,700px 210px #fff2,100px 300px #fff3,270px 340px #fff2,450px 310px #fff4,600px 290px #fff3,750px 330px #fff2,
+    830px 80px #fff3,860px 200px #fff2,900px 120px #fff4,950px 300px #fff3,1000px 50px #fff2,1050px 180px #fff4,1100px 90px #fff3,1150px 250px #fff2,1200px 150px #fff4,1250px 350px #fff3,
+    1300px 60px #fff2,1350px 220px #fff4,1400px 130px #fff3,40px 400px #fff2,200px 420px #fff4,500px 450px #fff3,700px 480px #fff2,900px 430px #fff4,1100px 460px #fff3,1300px 440px #fff2,
+    150px 500px #fff3,350px 530px #fff2,550px 510px #fff4,750px 550px #fff3,950px 520px #fff2,1150px 540px #fff4,100px 600px #fff3,300px 580px #fff2,600px 620px #fff4,800px 590px #fff3;
+    animation: twinkle 4s ease-in-out infinite alternate; }
+  .stars2 { box-shadow:
+    70px 45px #fff4,190px 100px #fff2,310px 55px #fff3,460px 120px #fff4,610px 70px #fff2,740px 140px #fff3,130px 200px #fff4,350px 170px #fff2,540px 220px #fff3,690px 190px #fff4,
+    40px 270px #fff2,220px 310px #fff3,410px 280px #fff4,580px 340px #fff2,760px 260px #fff3,900px 40px #fff4,1000px 160px #fff2,1100px 280px #fff3,1200px 70px #fff4,1300px 190px #fff2,
+    850px 310px #fff3,950px 230px #fff4,1050px 350px #fff2,1150px 110px #fff3,1250px 250px #fff4,50px 480px #fff3,250px 510px #fff2,450px 490px #fff4,650px 530px #fff3,850px 500px #fff2;
+    animation: twinkle 5s ease-in-out 1s infinite alternate; }
+  .stars3 { box-shadow:
+    160px 35px 1px #fff5,380px 90px 1px #fff4,620px 50px 1px #fff5,880px 110px 1px #fff4,1080px 40px 1px #fff5,
+    240px 250px 1px #fff4,500px 300px 1px #fff5,720px 270px 1px #fff4,1000px 250px 1px #fff5,300px 500px 1px #fff4;
+    animation: twinkle 3s ease-in-out 0.5s infinite alternate; }
+  @keyframes twinkle { 0%{opacity:1} 100%{opacity:0.3} }
+
+  /* Nebula blobs */
+  .nebula { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; }
+  .neb1 { width: 500px; height: 400px; top: 5%; left: 10%; background: radial-gradient(circle, rgba(0,180,216,0.06), transparent 70%); animation: drift1 15s ease-in-out infinite; }
+  .neb2 { width: 400px; height: 350px; top: 20%; right: 5%; background: radial-gradient(circle, rgba(131,56,236,0.05), transparent 70%); animation: drift2 18s ease-in-out infinite; }
+  .neb3 { width: 350px; height: 300px; bottom: 15%; left: 30%; background: radial-gradient(circle, rgba(0,229,160,0.04), transparent 70%); animation: drift1 20s ease-in-out 3s infinite; }
+  @keyframes drift1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(30px,-20px)} }
+  @keyframes drift2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-25px,15px)} }
+
+  /* Title */
+  .title { text-align: center; padding: 50px 20px 30px; position: relative; z-index: 1; }
+  .title h1 { font-size: 32px; color: rgba(255,255,255,0.8); letter-spacing: 6px; font-weight: 200; }
+  .title h1 strong { color: #00b4d8; font-weight: 600; }
+  .title p { color: rgba(255,255,255,0.2); font-size: 11px; margin-top: 8px; letter-spacing: 4px; }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 880px; margin: 20px auto; padding: 0 24px; position: relative; z-index: 1; }
+
+  /* Cards — each unique */
+  .card { text-decoration: none; color: inherit; border-radius: 20px; overflow: hidden; position: relative; transition: transform 0.5s cubic-bezier(0.175,0.885,0.32,1.275), box-shadow 0.4s; }
+  .card:hover { transform: translateY(-8px) scale(1.02); }
+  .card:hover .card-bg { transform: scale(1.05); }
+  .card:hover .card-info h2 { color: #fff; }
+
+  .card-bg { position: absolute; inset: 0; transition: transform 0.6s; }
+  .card-info { position: relative; z-index: 1; padding: 30px; min-height: 220px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .card-info .icon { font-size: 36px; margin-bottom: 12px; filter: drop-shadow(0 0 12px var(--glow)); }
+  .card-info h2 { font-size: 18px; color: rgba(255,255,255,0.85); margin-bottom: 6px; transition: color 0.3s; letter-spacing: 1px; }
+  .card-info p { font-size: 12px; color: rgba(255,255,255,0.4); line-height: 1.6; }
+
+  /* ── Card 1: Roulette — Spinning galaxy */
+  .card-galaxy .card-bg {
+    background: radial-gradient(ellipse at 70% 30%, rgba(0,180,216,0.2), transparent 50%),
+                radial-gradient(ellipse at 30% 70%, rgba(0,100,180,0.15), transparent 50%),
+                #060e18;
+  }
+  .card-galaxy::before { content:''; position: absolute; top: 15%; right: 10%; width: 100px; height: 100px; border-radius: 50%; border: 1px solid rgba(0,180,216,0.15); animation: spin 12s linear infinite; z-index: 0; }
+  .card-galaxy::after { content:''; position: absolute; top: 20%; right: 15%; width: 60px; height: 60px; border-radius: 50%; border: 1px dashed rgba(0,180,216,0.1); animation: spin 8s linear infinite reverse; z-index: 0; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* ── Card 2: Playground — Comet streaks */
+  .card-comet .card-bg {
+    background: linear-gradient(135deg, #0a0a1a 0%, #1a1000 100%);
+  }
+  .card-comet .streak { position: absolute; height: 1px; border-radius: 1px; background: linear-gradient(90deg, transparent, rgba(255,190,11,0.4), transparent); animation: streak var(--dur) linear infinite; top: var(--top); opacity: 0; }
+  @keyframes streak { 0%{left:-30%;opacity:0;width:0} 10%{opacity:1;width:80px} 90%{opacity:1} 100%{left:110%;opacity:0;width:40px} }
+
+  /* ── Card 3: PR Feed — Pulsing radar */
+  .card-radar .card-bg {
+    background: radial-gradient(circle at 50% 50%, rgba(0,229,160,0.08), transparent 60%), #060e18;
+  }
+  .card-radar .ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); border-radius: 50%; border: 1px solid rgba(0,229,160,0.1); animation: radarPulse 3s ease-out infinite; }
+  .card-radar .ring:nth-child(2) { animation-delay: 1s; }
+  .card-radar .ring:nth-child(3) { animation-delay: 2s; }
+  @keyframes radarPulse { 0%{width:0;height:0;opacity:0.5} 100%{width:250px;height:250px;opacity:0} }
+
+  /* ── Card 4: Galaxy — Wormhole */
+  .card-wormhole .card-bg {
+    background: radial-gradient(circle at 50% 40%, rgba(131,56,236,0.2), transparent 50%),
+                radial-gradient(circle at 50% 40%, rgba(80,20,180,0.1), transparent 30%),
+                #08061a;
+  }
+  .card-wormhole .vortex { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); border-radius: 50%; border: 1px solid rgba(131,56,236,0.15); }
+  .card-wormhole .vortex:nth-child(1) { width: 80px; height: 80px; animation: vortex 4s ease-in-out infinite; }
+  .card-wormhole .vortex:nth-child(2) { width: 55px; height: 55px; animation: vortex 3s ease-in-out 0.5s infinite; }
+  .card-wormhole .vortex:nth-child(3) { width: 30px; height: 30px; animation: vortex 2s ease-in-out 1s infinite; }
+  @keyframes vortex { 0%,100%{transform:translateX(-50%) scale(1) rotate(0)} 50%{transform:translateX(-50%) scale(1.15) rotate(180deg)} }
+
+  /* Hover glow per card */
+  .card-galaxy:hover { box-shadow: 0 20px 60px rgba(0,180,216,0.15); }
+  .card-comet:hover { box-shadow: 0 20px 60px rgba(255,190,11,0.12); }
+  .card-radar:hover { box-shadow: 0 20px 60px rgba(0,229,160,0.12); }
+  .card-wormhole:hover { box-shadow: 0 20px 60px rgba(131,56,236,0.15); }
+
+  footer { text-align: center; padding: 40px 20px; font-size: 10px; color: rgba(255,255,255,0.08); position: relative; z-index: 1; }
+  footer a { color: rgba(255,255,255,0.15); text-decoration: none; }
+
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="stars"></div><div class="stars2"></div><div class="stars3"></div>
+<div class="nebula neb1"></div><div class="nebula neb2"></div><div class="nebula neb3"></div>
+
+<div class="title">
+  <h1><strong>OpenSearch</strong> Observatory</h1>
+  <p>EXPLORE THE UNIVERSE</p>
+</div>
+
+<div class="grid">
+  <a class="card card-galaxy" href="roulette/" style="--glow:rgba(0,180,216,0.5)">
+    <div class="card-bg"></div>
+    <div class="card-info"><div class="icon">🎰</div><h2>Repo Roulette</h2><p>Spin the wheel, find your next open-source contribution</p></div>
+  </a>
+
+  <a class="card card-comet" href="playground/" style="--glow:rgba(255,190,11,0.5)">
+    <div class="card-bg"></div>
+    <div class="streak" style="--top:20%;--dur:3s"></div>
+    <div class="streak" style="--top:45%;--dur:4s"></div>
+    <div class="streak" style="--top:70%;--dur:3.5s"></div>
+    <div class="card-info"><div class="icon">🧪</div><h2>Query Playground</h2><p>Learn OpenSearch queries with live results</p></div>
+  </a>
+
+  <a class="card card-radar" href="pr-feed/" style="--glow:rgba(0,229,160,0.5)">
+    <div class="card-bg"></div>
+    <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+    <div class="card-info"><div class="icon">✈️</div><h2>PR Departures</h2><p>Live departure board of pull request activity</p></div>
+  </a>
+
+  <a class="card card-wormhole" href="galaxy/" style="--glow:rgba(131,56,236,0.5)">
+    <div class="card-bg"></div>
+    <div class="vortex"></div><div class="vortex"></div><div class="vortex"></div>
+    <div class="card-info"><div class="icon">🌌</div><h2>Dependency Galaxy</h2><p>3D map of plugin dependencies</p></div>
+  </a>
+</div>
+
+<footer>Built by <a href="https://github.com/eemijuntunen">Eemi Juntunen</a> · OpenSearch UI</footer>
+
+</body>
+</html>

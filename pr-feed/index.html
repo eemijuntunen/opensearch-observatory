@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenSearch PR Departures</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0a; color: #ffe066; font-family: 'Share Tech Mono', monospace; min-height: 100vh; }
+
+  .board { max-width: 960px; margin: 0 auto; padding: 20px; }
+  .board-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; background: #111; border: 1px solid #222; margin-bottom: 2px; }
+  .board-title { font-size: 22px; letter-spacing: 3px; color: #ffe066; }
+  .board-title span { color: #00b4d8; }
+  .board-clock { font-size: 18px; color: #00e5a0; }
+  .board-subtitle { font-size: 11px; color: #555; letter-spacing: 2px; }
+
+  .col-headers { display: grid; grid-template-columns: 70px 1fr 140px 100px 90px 80px; padding: 8px 20px; background: #0d0d0d; border: 1px solid #1a1a1a; font-size: 10px; color: #555; letter-spacing: 2px; }
+
+  .row { display: grid; grid-template-columns: 70px 1fr 140px 100px 90px 80px; padding: 10px 20px; background: #111; border-bottom: 1px solid #1a1a1a; align-items: center; animation: slideIn 0.4s ease; transition: background 0.3s; }
+  .row:hover { background: #1a1a1a; }
+  .row.merged { opacity: 0.5; }
+
+  .pr-number { color: #555; font-size: 12px; }
+  .pr-title { color: #e0e0e0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pr-title a { color: #e0e0e0; text-decoration: none; }
+  .pr-title a:hover { color: #00b4d8; }
+  .pr-repo { color: #00b4d8; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pr-author { color: #8899aa; font-size: 11px; }
+  .pr-time { color: #666; font-size: 11px; }
+
+  .pr-status { font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 3px; text-align: center; }
+  .status-open { color: #00e5a0; background: #00e5a015; border: 1px solid #00e5a033; }
+  .status-merged { color: #8338ec; background: #8338ec15; border: 1px solid #8338ec33; }
+  .status-draft { color: #666; background: #66666615; border: 1px solid #66666633; }
+
+  .loading { text-align: center; padding: 40px; color: #333; font-size: 14px; letter-spacing: 2px; }
+  .loading::after { content: ''; animation: dots 1.5s infinite; }
+
+  .stats-bar { display: flex; gap: 24px; padding: 12px 20px; background: #0d0d0d; border: 1px solid #1a1a1a; margin-top: 2px; font-size: 11px; color: #444; }
+  .stats-bar .stat-val { color: #ffe066; }
+
+  .filter-bar { display: flex; gap: 8px; padding: 8px 20px; background: #0d0d0d; border: 1px solid #1a1a1a; margin-bottom: 2px; }
+  .filter-btn { background: #1a1a1a; color: #555; border: 1px solid #222; padding: 4px 12px; font-family: inherit; font-size: 10px; cursor: pointer; letter-spacing: 1px; }
+  .filter-btn.active { color: #ffe066; border-color: #ffe066; }
+  .filter-btn:hover { color: #ffe066; }
+
+  .flip-char { display: inline-block; animation: flip 0.3s ease; }
+  @keyframes flip { 0% { transform: rotateX(90deg); opacity: 0; } 100% { transform: rotateX(0); opacity: 1; } }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes dots { 0% { content: ''; } 33% { content: '.'; } 66% { content: '..'; } 100% { content: '...'; } }
+
+  .refresh-indicator { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #00e5a0; margin-left: 8px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+</style>
+</head>
+<body>
+
+<div class="board">
+  <div class="board-header">
+    <div>
+      <div class="board-title"><span>OpenSearch</span> DEPARTURES</div>
+      <div class="board-subtitle">PULL REQUEST ACTIVITY BOARD</div>
+    </div>
+    <div>
+      <div class="board-clock" id="clock">00:00:00</div>
+      <div class="board-subtitle">LIVE <span class="refresh-indicator"></span></div>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" data-filter="all">ALL</button>
+    <button class="filter-btn" data-filter="open">OPEN</button>
+    <button class="filter-btn" data-filter="merged">MERGED</button>
+  </div>
+
+  <div class="col-headers">
+    <div>PR #</div>
+    <div>TITLE</div>
+    <div>REPO</div>
+    <div>AUTHOR</div>
+    <div>STATUS</div>
+    <div>TIME</div>
+  </div>
+
+  <div id="rows">
+    <div class="loading" id="loading">FETCHING FLIGHT DATA</div>
+  </div>
+
+  <div class="stats-bar" id="stats">
+    <div>TOTAL: <span class="stat-val" id="statTotal">-</span></div>
+    <div>OPEN: <span class="stat-val" id="statOpen">-</span></div>
+    <div>MERGED: <span class="stat-val" id="statMerged">-</span></div>
+    <div>REPOS: <span class="stat-val" id="statRepos">-</span></div>
+    <div>REFRESHES EVERY 60s</div>
+  </div>
+</div>
+
+<script>
+const ORG = 'opensearch-project';
+const REPOS = ['OpenSearch','OpenSearch-Dashboards','data-prepper','opensearch-build','neural-search',
+  'index-management','flow-framework','opensearch-migrations','opensearch-py','opensearch-js'];
+
+let allPRs = [];
+let currentFilter = 'all';
+
+function timeAgo(date) {
+  const s = Math.floor((Date.now() - new Date(date)) / 1000);
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  if (s < 86400) return Math.floor(s/3600) + 'h ago';
+  return Math.floor(s/86400) + 'd ago';
+}
+
+function statusClass(pr) {
+  if (pr.draft) return 'draft';
+  if (pr.merged_at || pr.pull_request?.merged_at) return 'merged';
+  return 'open';
+}
+
+function statusLabel(pr) {
+  const s = statusClass(pr);
+  if (s === 'merged') return 'MERGED';
+  if (s === 'draft') return 'DRAFT';
+  return 'OPEN';
+}
+
+async function fetchPRs() {
+  const promises = REPOS.map(async repo => {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${ORG}/${repo}/pulls?state=all&sort=updated&direction=desc&per_page=5`);
+      if (!res.ok) return [];
+      const prs = await res.json();
+      if (!Array.isArray(prs)) return [];
+      return prs.map(pr => ({ ...pr, _repo: repo }));
+    } catch { return []; }
+  });
+  const results = await Promise.all(promises);
+  return results.flat().sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+}
+
+function renderRows(prs) {
+  const container = document.getElementById('rows');
+  const filtered = prs.filter(pr => {
+    if (currentFilter === 'open') return statusClass(pr) === 'open';
+    if (currentFilter === 'merged') return statusClass(pr) === 'merged';
+    return true;
+  });
+
+  container.innerHTML = filtered.slice(0, 30).map(pr => {
+    const status = statusClass(pr);
+    const label = statusLabel(pr);
+    return `<div class="row ${status === 'merged' ? 'merged' : ''}">
+      <div class="pr-number">#${pr.number}</div>
+      <div class="pr-title"><a href="${pr.html_url}" target="_blank">${pr.title}</a></div>
+      <div class="pr-repo">${pr._repo}</div>
+      <div class="pr-author">${pr.user?.login || '?'}</div>
+      <div><span class="pr-status status-${status}">${label}</span></div>
+      <div class="pr-time">${timeAgo(pr.updated_at)}</div>
+    </div>`;
+  }).join('');
+
+  // Stats
+  const open = prs.filter(p => statusClass(p) === 'open').length;
+  const merged = prs.filter(p => statusClass(p) === 'merged').length;
+  const repos = new Set(prs.map(p => p._repo)).size;
+  document.getElementById('statTotal').textContent = prs.length;
+  document.getElementById('statOpen').textContent = open;
+  document.getElementById('statMerged').textContent = merged;
+  document.getElementById('statRepos').textContent = repos;
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toTimeString().split(' ')[0];
+}
+
+async function refresh() {
+  allPRs = await fetchPRs();
+  document.getElementById('loading')?.remove();
+  renderRows(allPRs);
+}
+
+// Filters
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    renderRows(allPRs);
+  });
+});
+
+// Init
+updateClock();
+setInterval(updateClock, 1000);
+refresh();
+setInterval(refresh, 60000);
+</script>
+</body>
+</html>
